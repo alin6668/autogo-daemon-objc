@@ -1,8 +1,10 @@
-# AutoGo Daemon (ObjC)
+# AutoGo Daemon (ObjC) — Rootless 版
 
-iOS 综合设备控制守护进程，纯 Objective-C 原生实现。运行在越狱 iOS 13.0+ 设备上，提供 **HTTP REST API** 和 **MCP 协议** 双接口。
+iOS 综合设备控制守护进程，纯 Objective-C 原生实现。适配 **Dopamine (多巴胺)** 等 **Rootless 无根越狱**，运行在 `/var/jb` 环境下，提供 **HTTP REST API** 和 **MCP 协议** 双接口。
 
 集成 [ios-mcp](https://github.com/witchan/ios-mcp) 和 [go-ios](https://github.com/danielpaulus/go-ios) 全部功能，并为 AI Agent 提供 50+ MCP Tools。
+
+> **架构**: `iphoneos-arm64` (Rootless) · **最低 iOS**: 15.0
 
 ---
 
@@ -166,22 +168,26 @@ bash build.sh
 
 ---
 
-## 安装到 iOS 设备
+### 安装到 iOS 设备 (Rootless)
 
 ```bash
 # 上传 DEB
-scp build/com.autogo.daemon_1.0.0_iphoneos-arm.deb root@<设备IP>:/var/root/
+scp build/com.autogo.daemon_1.0.0_iphoneos-arm64.deb root@<设备IP>:/var/root/
 
 # SSH 到设备安装
 ssh root@<设备IP>
-dpkg -i /var/root/com.autogo.daemon_1.0.0_iphoneos-arm.deb
+dpkg -i /var/root/com.autogo.daemon_1.0.0_iphoneos-arm64.deb
 
 # 手动启动 (安装后自动启动)
-launchctl load /Library/LaunchDaemons/com.autogo.daemon.plist
+launchctl load /var/jb/Library/LaunchDaemons/com.autogo.daemon.plist
 
 # 验证
 curl http://localhost:8090/health
 ```
+
+### 通过 Sileo/Zebra 安装
+
+在包管理器添加源 (或直接安装 DEB)，搜索 `AutoGo Daemon` 安装即可。包标记为 `iphoneos-arm64`，兼容 Dopamine 等 Rootless 环境。
 
 ---
 
@@ -253,10 +259,10 @@ curl -X POST http://<设备IP>:8090/mcp \
 
 ```bash
 # 加载 (开机自启)
-launchctl load /Library/LaunchDaemons/com.autogo.daemon.plist
+launchctl load /var/jb/Library/LaunchDaemons/com.autogo.daemon.plist
 
 # 卸载
-launchctl unload /Library/LaunchDaemons/com.autogo.daemon.plist
+launchctl unload /var/jb/Library/LaunchDaemons/com.autogo.daemon.plist
 
 # 查看日志
 tail -f /var/mobile/Documents/autogo/logs/daemon.log
@@ -271,18 +277,17 @@ curl http://localhost:8090/health
 
 ```
 autogo-daemon-objc/
-├── .github/workflows/build.yml     # GitHub Actions CI/CD
+├── .github/workflows/build.yml     # GitHub Actions CI/CD (Rootless)
 ├── .gitignore
-├── Makefile                        # theos 编译配置
+├── Makefile                        # theos 编译配置 (rootless scheme)
 ├── build.sh                        # clang 手动编译脚本
 ├── README.md
 ├── DEBIAN/
-│   ├── control                     # DEB 包元数据
-│   ├── postinst                    # 安装后脚本
+│   ├── control                     # DEB 包元数据 (iphoneos-arm64)
+│   ├── postinst                    # 安装后脚本 (Rootless)
 │   └── prerm                       # 卸载前脚本
 ├── Library/LaunchDaemons/
-│   └── com.autogo.daemon.plist     # 系统守护进程配置
-├── layout/var/                     # 预创建数据目录
+│   └── com.autogo.daemon.plist     # 守护进程配置 (var/jb 路径)
 └── src/                            # Objective-C 源码
     ├── main.m                      # 入口
     ├── AGJSON.h/m                  # JSON 序列化
@@ -301,8 +306,20 @@ autogo-daemon-objc/
     └── AGMCPHandler.h/m            # MCP 协议 (50+ Tools)
 ```
 
----
+## Rootless (无根) 适配说明
 
+本项目已完成 **Dopamine / 多巴胺** Rootless 无根越狱适配：
+
+| 项目 | 修改 |
+|------|------|
+| `Architecture` | `iphoneos-arm` → `iphoneos-arm64` |
+| 安装路径 | `/usr/bin/` → `/var/jb/usr/bin/` |
+| LaunchDaemon | `/Library/` → `/var/jb/Library/` |
+| 用户数据 | `/var/mobile/Documents/autogo/` (无 /var/jb 前缀) |
+| 最低 iOS | 13.0 → 15.0 |
+| DEB 包名 | `*_iphoneos-arm64.deb` |
+
+---
 ## 协议与许可
 
-纯 Objective-C 实现，无第三方依赖。作为 root LaunchDaemon 在越狱设备上运行，端口 8090。
+纯 Objective-C 实现，无第三方依赖。作为 root LaunchDaemon 在 Rootless 越狱设备 (`/var/jb`) 上运行，端口 8090。

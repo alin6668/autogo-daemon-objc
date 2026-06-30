@@ -1,5 +1,10 @@
 #!/bin/bash
+# Rootless (Dopamine) 卸载脚本
 set -e
-/bin/launchctl unload /Library/LaunchDaemons/com.autogo.daemon.plist 2>/dev/null || true
+
+PLIST="/var/jb/Library/LaunchDaemons/com.autogo.daemon.plist"
+/bin/launchctl unload "$PLIST" 2>/dev/null || \
+/var/jb/bin/launchctl unload "$PLIST" 2>/dev/null || true
+
 killall ios-autogo 2>/dev/null || true
 exit 0

@@ -1,4 +1,4 @@
-name: Build DEB
+name: Build DEB (Rootless)
 
 on:
   push:
@@ -20,7 +20,7 @@ env:
 
 jobs:
   build:
-    name: Build iOS DEB (arm64)
+    name: Build iOS DEB (arm64 rootless)
     runs-on: macos-14
 
     steps:
@@ -56,7 +56,7 @@ jobs:
             echo "编译 $f ..."
             clang -arch arm64 \
               -isysroot "$SDK_PATH" \
-              -miphoneos-version-min=13.0 \
+              -miphoneos-version-min=15.0 \
               -fobjc-arc \
               -fmodules \
               -Wno-deprecated-declarations \
@@ -70,7 +70,7 @@ jobs:
           echo "链接 ..."
           clang -arch arm64 \
             -isysroot "$SDK_PATH" \
-            -miphoneos-version-min=13.0 \
+            -miphoneos-version-min=15.0 \
             -framework Foundation \
             -framework CoreFoundation \
             -framework UIKit \
@@ -90,22 +90,21 @@ jobs:
         run: |
           DEB_ROOT="build/deb_root"
           rm -rf "$DEB_ROOT"
+          # Rootless 目录结构: 所有文件在包内即安装到 /var/jb/ 下
           mkdir -p "$DEB_ROOT/DEBIAN"
-          mkdir -p "$DEB_ROOT/usr/bin"
-          mkdir -p "$DEB_ROOT/Library/LaunchDaemons"
-          mkdir -p "$DEB_ROOT/var/mobile/Documents/autogo/screenshots"
-          mkdir -p "$DEB_ROOT/var/mobile/Documents/autogo/logs"
+          mkdir -p "$DEB_ROOT/var/jb/usr/bin"
+          mkdir -p "$DEB_ROOT/var/jb/Library/LaunchDaemons"
 
-          cp build/ios-autogo "$DEB_ROOT/usr/bin/"
-          chmod 755 "$DEB_ROOT/usr/bin/ios-autogo"
+          cp build/ios-autogo "$DEB_ROOT/var/jb/usr/bin/"
+          chmod 755 "$DEB_ROOT/var/jb/usr/bin/ios-autogo"
           cp DEBIAN/control "$DEB_ROOT/DEBIAN/"
           cp DEBIAN/postinst "$DEB_ROOT/DEBIAN/"
           cp DEBIAN/prerm "$DEB_ROOT/DEBIAN/"
           chmod 755 "$DEB_ROOT/DEBIAN/postinst" "$DEB_ROOT/DEBIAN/prerm"
-          cp Library/LaunchDaemons/com.autogo.daemon.plist "$DEB_ROOT/Library/LaunchDaemons/"
+          cp Library/LaunchDaemons/com.autogo.daemon.plist "$DEB_ROOT/var/jb/Library/LaunchDaemons/"
 
-          # 使用 dpkg-deb 打包 (如果可用)
-          DEB_OUT="build/${DEB_NAME}_${VERSION}_iphoneos-arm.deb"
+          # 使用 dpkg-deb 打包
+          DEB_OUT="build/${DEB_NAME}_${VERSION}_iphoneos-arm64.deb"
           if command -v dpkg-deb >/dev/null 2>&1; then
             dpkg-deb -b "$DEB_ROOT" "$DEB_OUT"
             echo "DEB (dpkg-deb): $DEB_OUT"
@@ -133,6 +132,6 @@ jobs:
         with:
           files: ${{ env.deb_path }}
           generate_release_notes: true
-          name: "AutoGo Daemon v${{ github.ref_name }}"
+          name: "AutoGo Daemon v${{ github.ref_name }} (Rootless)"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

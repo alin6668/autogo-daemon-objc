@@ -1,8 +1,21 @@
 #!/bin/bash
+# Rootless (Dopamine) 安装脚本
 set -e
-chmod 755 /usr/bin/ios-autogo
-chown root:wheel /usr/bin/ios-autogo
-/bin/launchctl load /Library/LaunchDaemons/com.autogo.daemon.plist 2>/dev/null || true
-mkdir -p /var/mobile/Documents/autogo/{screenshots,logs,crash,data}
-echo "AutoGo Daemon 安装完成! http://设备IP:8090"
+
+# 安装路径在无根环境内, 实际为 /var/jb/...
+DAEMON_BIN="/var/jb/usr/bin/ios-autogo"
+PLIST="/var/jb/Library/LaunchDaemons/com.autogo.daemon.plist"
+DATA_DIR="/var/mobile/Documents/autogo"
+
+chmod 755 "$DAEMON_BIN"
+chown root:wheel "$DAEMON_BIN" 2>/dev/null || true
+
+# 加载守护进程
+/bin/launchctl load "$PLIST" 2>/dev/null || /var/jb/bin/launchctl load "$PLIST" 2>/dev/null || true
+
+# 创建用户数据目录 (非 jb 前缀, /var 可写)
+mkdir -p "$DATA_DIR"/{screenshots,logs,crash,data}
+chown mobile:mobile "$DATA_DIR" 2>/dev/null || true
+
+echo "AutoGo Daemon (Rootless) 安装完成! http://设备IP:8090"
 exit 0

@@ -1,8 +1,11 @@
-# AutoGo Daemon - iOS 综合设备控制守护进程
+# AutoGo Daemon - iOS 综合设备控制守护进程 (Rootless / 多巴胺)
 # 编译: make 或 make package
 
 ARCHS = arm64 arm64e
-TARGET = iphone:clang:13.0:13.0
+TARGET = iphone:clang:15.0:15.0
+
+# Rootless theos 配置
+THEOS_PACKAGE_SCHEME = rootless
 
 INSTALL_TARGET_PROCESSES = SpringBoard
 
@@ -30,19 +33,18 @@ ios-autogo_FILES = \
 ios-autogo_FRAMEWORKS = Foundation CoreFoundation UIKit CoreGraphics IOKit Security
 ios-autogo_LDFLAGS = -ldl
 ios-autogo_CFLAGS = -fobjc-arc
-ios-autogo_INSTALL_PATH = /usr/bin
+ios-autogo_INSTALL_PATH = /var/jb/usr/bin
 
 include $(THEOS_MAKE_PATH)/tool.mk
 
-# DEB 打包
+# DEB 打包 (Rootless: 不打包 /var/mobile 用户数据)
 internal-package::
-	@echo "==> 组装 DEB 包"
+	@echo "==> 组装 DEB 包 (Rootless)"
 	cp -r DEBIAN $(THEOS_STAGING_DIR)/
 	cp -r Library $(THEOS_STAGING_DIR)/
-	cp -r layout/var $(THEOS_STAGING_DIR)/
 	chmod 755 $(THEOS_STAGING_DIR)/DEBIAN/postinst
 	chmod 755 $(THEOS_STAGING_DIR)/DEBIAN/prerm
-	@echo "  DEB 包准备就绪"
+	@echo "  DEB 包准备就绪 (iphoneos-arm64)"
 
 # 直接打包
 package::

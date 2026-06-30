@@ -1,8 +1,8 @@
 Package: com.autogo.daemon
 Name: AutoGo Daemon
 Version: 1.0.0
-Architecture: iphoneos-arm
-Description: iOS 综合设备控制守护进程
+Architecture: iphoneos-arm64
+Description: iOS 综合设备控制守护进程 (Rootless / 多巴胺)
  集成 ios-mcp 与 go-ios 全部功能的 HTTP REST API / MCP 服务。
  支持：触控手势、硬件按键、文字输入、截图、App 管理、
  无障碍操作、剪贴板、文件系统、系统日志、VPN/WiFi 控制、
@@ -10,5 +10,5 @@ Description: iOS 综合设备控制守护进程
 Maintainer: AutoGo
 Author: AutoGo
 Section: System
-Depends: firmware (>= 13.0)
+Depends: firmware (>= 15.0)
 Tag: purpose::daemon, role::enduser

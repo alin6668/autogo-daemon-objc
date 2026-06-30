@@ -1,22 +1,23 @@
 #!/bin/bash
-# AutoGo Daemon (ObjC) 构建脚本
+# AutoGo Daemon (ObjC) 构建脚本 - Rootless (Dopamine)
 # 使用 theos 编译; 若无 theos，可用 clang 手动编译
 
 set -e
 
 DAEMON="ios-autogo"
 OUTDIR="build"
+SDK_MIN="15.0"
 
 # 检测 theos
 if [ -n "$THEOS" ] && [ -f "$THEOS/makefiles/common.mk" ]; then
-    echo "=== 使用 theos 编译 ==="
+    echo "=== 使用 theos (Rootless) 编译 ==="
     make package
     echo "DEB 包在 packages/ 目录"
     exit 0
 fi
 
 # 手动编译 (macOS + Xcode)
-echo "=== 手动编译 (clang + SDK) ==="
+echo "=== 手动编译 (clang + SDK, Rootless) ==="
 
 SDK_PATH="${SDK_PATH:-$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null)}"
 if [ -z "$SDK_PATH" ]; then
@@ -26,6 +27,7 @@ if [ -z "$SDK_PATH" ]; then
 fi
 
 echo "SDK: $SDK_PATH"
+echo "最低 iOS: $SDK_MIN"
 
 mkdir -p "$OUTDIR"
 
@@ -40,7 +42,7 @@ for ARCH in $ARCHS; do
         obj="$OUTDIR/$(basename $f .m)_${ARCH}.o"
         clang -arch "$ARCH" \
             -isysroot "$SDK_PATH" \
-            -miphoneos-version-min=13.0 \
+            -miphoneos-version-min="$SDK_MIN" \
             -fobjc-arc \
             -fmodules \
             -I"$SDK_PATH/usr/include" \
@@ -52,7 +54,7 @@ for ARCH in $ARCHS; do
     BIN="$OUTDIR/${DAEMON}_${ARCH}"
     clang -arch "$ARCH" \
         -isysroot "$SDK_PATH" \
-        -miphoneos-version-min=13.0 \
+        -miphoneos-version-min="$SDK_MIN" \
         -framework Foundation \
         -framework CoreFoundation \
         -framework UIKit \
@@ -83,26 +85,24 @@ fi
 echo "=== 编译完成: $OUTDIR/$DAEMON ==="
 ls -lh "$OUTDIR/$DAEMON"
 
-# 组装 DEB
+# 组装 DEB (Rootless 结构)
 echo ""
-echo "=== 组装 DEB 包 ==="
+echo "=== 组装 DEB 包 (Rootless / iphoneos-arm64) ==="
 DEB_ROOT="$OUTDIR/deb_root"
 rm -rf "$DEB_ROOT"
 mkdir -p "$DEB_ROOT/DEBIAN"
-mkdir -p "$DEB_ROOT/usr/bin"
-mkdir -p "$DEB_ROOT/Library/LaunchDaemons"
-mkdir -p "$DEB_ROOT/var/mobile/Documents/autogo/screenshots"
-mkdir -p "$DEB_ROOT/var/mobile/Documents/autogo/logs"
+mkdir -p "$DEB_ROOT/var/jb/usr/bin"
+mkdir -p "$DEB_ROOT/var/jb/Library/LaunchDaemons"
 
-cp "$OUTDIR/$DAEMON" "$DEB_ROOT/usr/bin/"
-chmod 755 "$DEB_ROOT/usr/bin/$DAEMON"
+cp "$OUTDIR/$DAEMON" "$DEB_ROOT/var/jb/usr/bin/"
+chmod 755 "$DEB_ROOT/var/jb/usr/bin/$DAEMON"
 cp DEBIAN/control "$DEB_ROOT/DEBIAN/"
 cp DEBIAN/postinst "$DEB_ROOT/DEBIAN/"
 cp DEBIAN/prerm "$DEB_ROOT/DEBIAN/"
 chmod 755 "$DEB_ROOT/DEBIAN/postinst" "$DEB_ROOT/DEBIAN/prerm"
-cp Library/LaunchDaemons/com.autogo.daemon.plist "$DEB_ROOT/Library/LaunchDaemons/"
+cp Library/LaunchDaemons/com.autogo.daemon.plist "$DEB_ROOT/var/jb/Library/LaunchDaemons/"
 
-DEB_NAME="com.autogo.daemon_1.0.0_iphoneos-arm.deb"
+DEB_NAME="com.autogo.daemon_1.0.0_iphoneos-arm64.deb"
 if command -v dpkg-deb >/dev/null 2>&1; then
     dpkg-deb -b "$DEB_ROOT" "$OUTDIR/$DEB_NAME"
 elif command -v dpkg >/dev/null 2>&1; then
