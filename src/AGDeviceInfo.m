@@ -50,22 +50,62 @@ static int ag_run_cmd(const char *cmd) {
 }
 
 /// 在 rootless 环境下安全的 popen 替代
+/// 使用 posix_spawnp + pipe 实现，不依赖 /bin/sh
 static FILE *ag_popen(const char *cmd, const char *mode) {
-    // 策略1: 标准 popen (依赖 /bin/sh)
-    FILE *fp = popen(cmd, mode);
-    if (fp) return fp;
+    int pipefd[2];
+    if (pipe(pipefd) != 0) return NULL;
 
-    // 策略2: 用 jbroot/bin/sh 构造完整命令重试
-    // popen 内部固定用 /bin/sh，所以如果 popen 失败就是 sh 不存在
-    NSString *jbSh = [ag_jbroot() stringByAppendingPathComponent:@"bin/sh"];
-    if ([[NSFileManager defaultManager] isExecutableFileAtPath:jbSh]) {
-        // 无法直接用 jbroot sh 做 popen，改用 posix_spawn + pipe
-        // 作为简化方案，尝试用 jbroot sh 的绝对路径执行
-        NSString *fullCmd = [NSString stringWithFormat:@"%s -c '%s'",
-                             [jbSh UTF8String], cmd];
-        fp = popen([fullCmd UTF8String], mode);
+    pid_t pid;
+    char *argv[] = {"sh", "-c", (char *)cmd, NULL};
+    extern char **environ;
+
+    posix_spawn_file_actions_t actions;
+    posix_spawn_file_actions_init(&actions);
+
+    if (mode[0] == 'r') {
+        posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDOUT_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, pipefd[1], STDERR_FILENO);
+        posix_spawn_file_actions_addclose(&actions, pipefd[0]);
+    } else {
+        posix_spawn_file_actions_adddup2(&actions, pipefd[0], STDIN_FILENO);
+        posix_spawn_file_actions_addclose(&actions, pipefd[1]);
     }
-    return fp;
+
+    // 策略1: posix_spawnp 从 PATH 搜索 sh
+    int spawnRet = posix_spawnp(&pid, "sh", &actions, NULL, argv, environ);
+
+    // 策略2: jbroot/bin/sh
+    if (spawnRet != 0) {
+        NSString *jbSh = [ag_jbroot() stringByAppendingPathComponent:@"bin/sh"];
+        if ([[NSFileManager defaultManager] isExecutableFileAtPath:jbSh]) {
+            const char *shPath = [jbSh UTF8String];
+            char *jbArgv[] = {(char *)shPath, "-c", (char *)cmd, NULL};
+            spawnRet = posix_spawn(&pid, shPath, &actions, NULL, jbArgv, environ);
+        }
+    }
+
+    // 策略3: /bin/sh 回退
+    if (spawnRet != 0) {
+        char *fallbackArgv[] = {"/bin/sh", "-c", (char *)cmd, NULL};
+        spawnRet = posix_spawn(&pid, "/bin/sh", &actions, NULL, fallbackArgv, environ);
+    }
+
+    posix_spawn_file_actions_destroy(&actions);
+
+    if (spawnRet != 0) {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return NULL;
+    }
+
+    // 父进程关闭不需要的一端
+    if (mode[0] == 'r') {
+        close(pipefd[1]);
+        return fdopen(pipefd[0], "r");
+    } else {
+        close(pipefd[0]);
+        return fdopen(pipefd[1], "w");
+    }
 }
 
 @interface UIScreen (Private)
