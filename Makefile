@@ -28,7 +28,6 @@ ios-autogo_FILES = \
 	src/AGJSON.m
 
 ios-autogo_FRAMEWORKS = Foundation CoreFoundation UIKit CoreGraphics IOKit Security
-ios-autogo_PRIVATE_FRAMEWORKS = MobileWiFi AccessibilityUtilities
 ios-autogo_LDFLAGS = -ldl
 ios-autogo_CFLAGS = -fobjc-arc
 ios-autogo_INSTALL_PATH = /usr/bin

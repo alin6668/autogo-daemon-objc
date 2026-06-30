@@ -8,6 +8,19 @@
 #import <mach/host_info.h>
 #import <dlfcn.h>
 #import <notify.h>
+#import <spawn.h>
+#import <sys/wait.h>
+
+static int ag_run_cmd(const char *cmd) {
+    pid_t pid;
+    char *argv[] = {"/bin/sh", "-c", (char *)cmd, NULL};
+    extern char **environ;
+    if (posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ) != 0)
+        return -1;
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
 
 @implementation AGDeviceInfo
 
@@ -99,7 +112,7 @@
     [[NSFileManager defaultManager] createDirectoryAtPath:
         [tmpPath stringByDeletingLastPathComponent]
         withIntermediateDirectories:YES attributes:nil error:nil];
-    system([[NSString stringWithFormat:@"screencapture %@ 2>/dev/null", tmpPath] UTF8String]);
+    ag_run_cmd([[NSString stringWithFormat:@"screencapture %@ 2>/dev/null", tmpPath] UTF8String]);
     return [NSData dataWithContentsOfFile:tmpPath];
 }
 
@@ -118,7 +131,7 @@
 + (void)lockOrientation:(BOOL)lock {
     // 通过 shell
     if (lock) {
-        system("activator send libactivator.orientation.portrait 2>/dev/null");
+        ag_run_cmd("activator send libactivator.orientation.portrait 2>/dev/null");
     }
 }
 
@@ -138,8 +151,8 @@
 
 #pragma mark - 系统控制
 
-+ (void)respring { system("sbreload 2>/dev/null || killall -9 SpringBoard 2>/dev/null"); }
-+ (void)reboot   { system("reboot"); }
++ (void)respring { ag_run_cmd("sbreload 2>/dev/null || killall -9 SpringBoard 2>/dev/null"); }
++ (void)reboot   { ag_run_cmd("reboot"); }
 
 + (NSArray *)processes {
     NSMutableArray *list = [NSMutableArray array];
@@ -202,8 +215,8 @@
 
 #pragma mark - 手电筒
 
-+ (void)flashlightOn  { system("activator send libactivator.flashlight.on 2>/dev/null"); }
-+ (void)flashlightOff { system("activator send libactivator.flashlight.off 2>/dev/null"); }
++ (void)flashlightOn  { ag_run_cmd("activator send libactivator.flashlight.on 2>/dev/null"); }
++ (void)flashlightOff { ag_run_cmd("activator send libactivator.flashlight.off 2>/dev/null"); }
 + (BOOL)isFlashlightOn { return NO; }
 
 #pragma mark - URL
@@ -216,7 +229,7 @@
 #pragma mark - 振动
 
 + (void)hapticLight {
-    system("activator send libactivator.vibrate 2>/dev/null");
+    ag_run_cmd("activator send libactivator.vibrate 2>/dev/null");
 }
 
 + (void)hapticHeavy {

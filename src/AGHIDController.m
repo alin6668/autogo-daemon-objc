@@ -1,6 +1,19 @@
 //  AGHIDController.m - 硬件按键实现 (通过 activator 或 shell)
 
 #import "AGHIDController.h"
+#import <spawn.h>
+#import <sys/wait.h>
+
+static int ag_run_cmd(const char *cmd) {
+    pid_t pid;
+    char *argv[] = {"/bin/sh", "-c", (char *)cmd, NULL};
+    extern char **environ;
+    if (posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ) != 0)
+        return -1;
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
 
 @implementation AGHIDController
 
@@ -55,7 +68,7 @@
 
 + (void)activatorEvent:(NSString *)event {
     // 方式 1: activator 命令行
-    system([[NSString stringWithFormat:@"activator send %@ 2>/dev/null", event] UTF8String]);
+    ag_run_cmd([[NSString stringWithFormat:@"activator send %@ 2>/dev/null", event] UTF8String]);
 
     // 方式 2: 直接使用 GSEvent (春秋兼容)
     // GSSendSystemEvent 在 CoreGraphics 中，也可使用

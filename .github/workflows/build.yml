@@ -37,8 +37,8 @@ jobs:
 
       - name: Install theos
         run: |
-          # 安装 theos 依赖
-          brew install make ldid xz 2>/dev/null || true
+          # 安装 theos 依赖 (dpkg-deb 是 dm.pl 的依赖)
+          brew install make ldid xz dpkg 2>/dev/null || true
           
           # 克隆 theos
           THEOS_DIR="$HOME/theos"
@@ -48,13 +48,14 @@ jobs:
             cd "$THEOS_DIR" && git pull
           fi
           
-          # 安装 headers
+          # 安装 SDK headers
           curl -LO https://github.com/theos/sdks/raw/master/iPhoneOS16.5.sdk.tar.xz
           mkdir -p "$THEOS_DIR/sdks"
           tar -xf iPhoneOS16.5.sdk.tar.xz -C "$THEOS_DIR/sdks" 2>/dev/null || true
           
           # 验证
           ls "$THEOS_DIR/sdks/"
+          dpkg-deb --version 2>/dev/null && echo "dpkg-deb OK" || echo "dpkg-deb NOT FOUND"
           echo "THEOS=$THEOS_DIR" >> $GITHUB_ENV
 
       - name: Compile

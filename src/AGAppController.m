@@ -2,6 +2,19 @@
 
 #import "AGAppController.h"
 #import <UIKit/UIKit.h>
+#import <spawn.h>
+#import <sys/wait.h>
+
+static int ag_run_cmd(const char *cmd) {
+    pid_t pid;
+    char *argv[] = {"/bin/sh", "-c", (char *)cmd, NULL};
+    extern char **environ;
+    if (posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ) != 0)
+        return -1;
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
 
 @implementation AGAppController
 
@@ -71,9 +84,9 @@
     if (pid > 0) {
         kill(pid, SIGKILL);
     } else if (process.length > 0) {
-        system([[NSString stringWithFormat:@"killall -9 %@ 2>/dev/null", process] UTF8String]);
+        ag_run_cmd([[NSString stringWithFormat:@"killall -9 %@ 2>/dev/null", process] UTF8String]);
     } else if (bundleID.length > 0) {
-        system([[NSString stringWithFormat:
+        ag_run_cmd([[NSString stringWithFormat:
             @"ps ax | grep '%@' | grep -v grep | awk '{print $1}' | xargs kill -9 2>/dev/null",
             bundleID] UTF8String]);
     }
@@ -100,14 +113,14 @@
 + (void)installApp:(NSString *)path {
     if ([path hasSuffix:@".ipa"]) {
         NSString *tmp = [NSString stringWithFormat:@"/tmp/ipa_install_%d", getpid()];
-        system([[NSString stringWithFormat:@"unzip -o '%@' -d '%@' 2>/dev/null && cp -r '%@'/Payload/*.app /Applications/ 2>/dev/null && uicache -a 2>/dev/null && rm -rf '%@'", path, tmp, tmp, tmp] UTF8String]);
+        ag_run_cmd([[NSString stringWithFormat:@"unzip -o '%@' -d '%@' 2>/dev/null && cp -r '%@'/Payload/*.app /Applications/ 2>/dev/null && uicache -a 2>/dev/null && rm -rf '%@'", path, tmp, tmp, tmp] UTF8String]);
     } else if ([path hasSuffix:@".deb"]) {
-        system([[NSString stringWithFormat:@"dpkg -i '%@' 2>/dev/null", path] UTF8String]);
+        ag_run_cmd([[NSString stringWithFormat:@"dpkg -i '%@' 2>/dev/null", path] UTF8String]);
     }
 }
 
 + (void)uninstallApp:(NSString *)bundleID {
-    system([[NSString stringWithFormat:
+    ag_run_cmd([[NSString stringWithFormat:
         @"find /Applications -name '*.app' | while read app; do "
         @"plutil -p \"$app/Info.plist\" 2>/dev/null | grep -q '%@' && rm -rf \"$app\"; done; "
         @"uicache -a 2>/dev/null", bundleID] UTF8String]);

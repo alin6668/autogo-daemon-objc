@@ -1,6 +1,19 @@
 //  AGShellController.m - Shell 执行实现
 
 #import "AGShellController.h"
+#import <spawn.h>
+#import <sys/wait.h>
+
+static int ag_run_cmd(const char *cmd) {
+    pid_t pid;
+    char *argv[] = {"/bin/sh", "-c", (char *)cmd, NULL};
+    extern char **environ;
+    if (posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ) != 0)
+        return -1;
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
 
 @implementation AGShellController
 
@@ -22,7 +35,7 @@
         cmd = [NSString stringWithFormat:@"timeout %d %@", timeout, cmd];
     }
 
-    int ret = system([cmd UTF8String]);
+    int ret = ag_run_cmd([cmd UTF8String]);
 
     NSString *stdout = [NSString stringWithContentsOfFile:tmpOut encoding:NSUTF8StringEncoding error:nil] ?: @"";
     NSString *stderr = [NSString stringWithContentsOfFile:tmpErr encoding:NSUTF8StringEncoding error:nil] ?: @"";
