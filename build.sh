@@ -103,6 +103,7 @@ for ARCH in $ARCHS; do
             -miphoneos-version-min="$SDK_MIN" \
             -fobjc-arc \
             -fmodules \
+            -fPIE \
             -I"$SDK_PATH/usr/include" \
             -Iapp \
             -c "$f" -o "$obj"
@@ -114,6 +115,7 @@ for ARCH in $ARCHS; do
     clang -arch "$ARCH" \
         -isysroot "$SDK_PATH" \
         -miphoneos-version-min="$SDK_MIN" \
+        -pie \
         -framework UIKit \
         -framework Foundation \
         -framework CoreGraphics \
@@ -160,6 +162,15 @@ cp "$APP_FAT_BIN" "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
 chmod 755 "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
 cp app/Info.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/Info.plist"
 cp app/entitlements.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/entitlements.plist"
+
+# 复制 App 图标 (解决白图标问题)
+if [ -f resources/META-INF/appicon.png ]; then
+    cp resources/META-INF/appicon.png "$DEB_ROOT/var/jb/Applications/AutoGo.app/AppIcon60x60@2x.png"
+    cp resources/META-INF/appicon.png "$DEB_ROOT/var/jb/Applications/AutoGo.app/AppIcon60x60.png"
+    echo "App 图标已复制"
+else
+    echo "警告: 未找到 resources/META-INF/appicon.png"
+fi
 
 cp DEBIAN/control "$DEB_ROOT/DEBIAN/"
 cp DEBIAN/postinst "$DEB_ROOT/DEBIAN/"

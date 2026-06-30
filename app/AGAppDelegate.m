@@ -64,7 +64,7 @@
     // 计算 safe area 偏移 (状态栏)
     CGFloat topOffset = 44;
     if (@available(iOS 11.0, *)) {
-        topOffset = [UIApplication sharedApplication].keyWindow.safeAreaInsets.top;
+        topOffset = self.window.safeAreaInsets.top;
         if (topOffset < 44) topOffset = 44;
     }
 

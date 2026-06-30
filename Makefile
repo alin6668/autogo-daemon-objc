@@ -44,7 +44,8 @@ AutoGo_FILES = \
 	app/AGAppDelegate.m
 
 AutoGo_FRAMEWORKS = UIKit Foundation CoreGraphics
-AutoGo_CFLAGS = -fobjc-arc
+AutoGo_CFLAGS = -fobjc-arc -fPIE
+AutoGo_LDFLAGS = -pie
 AutoGo_INSTALL_PATH = /var/jb/Applications
 
 include $(THEOS_MAKE_PATH)/tool.mk
@@ -58,6 +59,13 @@ internal-package::
 	chmod 755 $(THEOS_STAGING_DIR)/DEBIAN/postinst
 	chmod 755 $(THEOS_STAGING_DIR)/DEBIAN/prerm
 	@echo "  DEB 包准备就绪 (iphoneos-arm64e)"
+	# 复制 App 图标
+	@if [ -f resources/META-INF/appicon.png ]; then \
+		mkdir -p $(THEOS_STAGING_DIR)/var/jb/Applications/AutoGo.app; \
+		cp resources/META-INF/appicon.png $(THEOS_STAGING_DIR)/var/jb/Applications/AutoGo.app/AppIcon60x60@2x.png; \
+		cp resources/META-INF/appicon.png $(THEOS_STAGING_DIR)/var/jb/Applications/AutoGo.app/AppIcon60x60.png; \
+		echo "  App 图标已复制"; \
+	fi
 
 # 直接打包
 package::
