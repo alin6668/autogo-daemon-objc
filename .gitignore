@@ -1,0 +1,33 @@
+# Xcode
+*.xcuserdata
+*.xcworkspace
+*.xcuserstate
+*.xcbkptlist
+*.xcdebugger
+DerivedData/
+build/
+xcuserdata/
+
+# theos
+packages/
+.theos/
+*.deb
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+*.o
+*.dylib
+*.log
+
+# Private API creds
+*/MobileWiFi.h
+*/AccessibilityUtilities.h

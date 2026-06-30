@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+chmod 755 /usr/bin/ios-autogo
+chown root:wheel /usr/bin/ios-autogo
+/bin/launchctl load /Library/LaunchDaemons/com.autogo.daemon.plist 2>/dev/null || true
+mkdir -p /var/mobile/Documents/autogo/{screenshots,logs,crash,data}
+echo "AutoGo Daemon 安装完成! http://设备IP:8090"
+exit 0
