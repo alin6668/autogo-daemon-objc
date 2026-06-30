@@ -48,7 +48,7 @@ jobs:
 
           mkdir -p build/obj
 
-          # 编译所有 .m 文件
+          # === 编译守护进程 ===
           OBJS=""
           for f in src/*.m; do
             NAME=$(basename "$f" .m)
@@ -67,7 +67,7 @@ jobs:
             OBJS="$OBJS $OBJ"
           done
 
-          echo "链接 ..."
+          echo "链接守护进程 ..."
           clang -arch arm64 \
             -isysroot "$SDK_PATH" \
             -miphoneos-version-min=15.0 \
@@ -86,6 +86,41 @@ jobs:
           ls -lh build/ios-autogo
           file build/ios-autogo
 
+          # === 编译 Dashboard App ===
+          echo "编译 Dashboard App ..."
+          APP_OBJS=""
+          for f in app/*.m; do
+            NAME=$(basename "$f" .m)
+            OBJ="build/obj/${NAME}_app.o"
+            echo "编译 $f ..."
+            clang -arch arm64 \
+              -isysroot "$SDK_PATH" \
+              -miphoneos-version-min=15.0 \
+              -fobjc-arc \
+              -fmodules \
+              -Wno-deprecated-declarations \
+              -Iapp \
+              -c "$f" -o "$OBJ" || {
+                echo "ERROR: 编译 $f 失败"
+                exit 1
+              }
+            APP_OBJS="$APP_OBJS $OBJ"
+          done
+
+          echo "链接 Dashboard App ..."
+          clang -arch arm64 \
+            -isysroot "$SDK_PATH" \
+            -miphoneos-version-min=15.0 \
+            -framework UIKit \
+            -framework Foundation \
+            -framework CoreGraphics \
+            $APP_OBJS \
+            -o build/AutoGo
+
+          ldid -S build/AutoGo 2>/dev/null || echo "App 签名跳过"
+          ls -lh build/AutoGo
+          file build/AutoGo
+
       - name: Build DEB package
         run: |
           DEB_ROOT="build/deb_root"
@@ -94,9 +129,16 @@ jobs:
           mkdir -p "$DEB_ROOT/DEBIAN"
           mkdir -p "$DEB_ROOT/var/jb/usr/bin"
           mkdir -p "$DEB_ROOT/var/jb/Library/LaunchDaemons"
+          mkdir -p "$DEB_ROOT/var/jb/Applications/AutoGo.app"
 
           cp build/ios-autogo "$DEB_ROOT/var/jb/usr/bin/"
           chmod 755 "$DEB_ROOT/var/jb/usr/bin/ios-autogo"
+
+          # Dashboard App
+          cp build/AutoGo "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
+          chmod 755 "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
+          cp app/Info.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/Info.plist"
+
           cp DEBIAN/control "$DEB_ROOT/DEBIAN/"
           cp DEBIAN/postinst "$DEB_ROOT/DEBIAN/"
           cp DEBIAN/prerm "$DEB_ROOT/DEBIAN/"

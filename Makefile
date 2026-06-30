@@ -11,6 +11,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 
 include $(THEOS)/makefiles/common.mk
 
+# === 守护进程 (后台服务) ===
 TOOL_NAME = ios-autogo
 
 ios-autogo_FILES = \
@@ -35,7 +36,19 @@ ios-autogo_LDFLAGS = -ldl
 ios-autogo_CFLAGS = -fobjc-arc
 ios-autogo_INSTALL_PATH = /var/jb/usr/bin
 
+# === Dashboard App (SpringBoard 可见应用) ===
+APPLICATION_NAME = AutoGo
+
+AutoGo_FILES = \
+	app/main.m \
+	app/AGAppDelegate.m
+
+AutoGo_FRAMEWORKS = UIKit Foundation CoreGraphics
+AutoGo_CFLAGS = -fobjc-arc
+AutoGo_INSTALL_PATH = /var/jb/Applications
+
 include $(THEOS_MAKE_PATH)/tool.mk
+include $(THEOS_MAKE_PATH)/application.mk
 
 # DEB 打包 (Rootless: 不打包 /var/mobile 用户数据)
 internal-package::

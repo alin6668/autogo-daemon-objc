@@ -4,7 +4,20 @@ iOS 综合设备控制守护进程，纯 Objective-C 原生实现。适配 **Dop
 
 集成 [ios-mcp](https://github.com/witchan/ios-mcp) 和 [go-ios](https://github.com/danielpaulus/go-ios) 全部功能，并为 AI Agent 提供 50+ MCP Tools。
 
-> **架构**: `iphoneos-arm64` (Rootless) · **最低 iOS**: 15.0
+> **架构**: `iphoneos-arm64` (Rootless) · **最低 iOS**: 15.0 · **端口**: 8888
+
+---
+
+## 📱 Dashboard App
+
+安装后在 SpringBoard 可见 **AutoGo** 应用图标，点击打开可查看：
+
+- **服务状态**：实时检测守护进程是否激活（绿/红状态指示）
+- **设备信息**：设备型号、iOS 版本、IP 地址
+- **快捷操作**：一键打开 Web 控制台、API 文档
+- **自动刷新**：每 10 秒自动检测服务状态
+
+同时内置 **Web 控制台** (`http://设备IP:8888`) 提供完整的深色主题仪表盘。
 
 ---
 
@@ -182,7 +195,7 @@ dpkg -i /var/root/com.autogo.daemon_1.0.0_iphoneos-arm64.deb
 launchctl load /var/jb/Library/LaunchDaemons/com.autogo.daemon.plist
 
 # 验证
-curl http://localhost:8090/health
+curl http://localhost:8888/health
 ```
 
 ### 通过 Sileo/Zebra 安装
@@ -197,36 +210,36 @@ curl http://localhost:8090/health
 
 ```bash
 # 健康检查
-curl http://<设备IP>:8090/health
+curl http://<设备IP>:8888/health
 
 # 获取设备信息
-curl http://<设备IP>:8090/api/device/info
+curl http://<设备IP>:8888/api/device/info
 
 # 截图
-curl -X POST http://<设备IP>:8090/api/device/screenshot \
+curl -X POST http://<设备IP>:8888/api/device/screenshot \
   -H "Content-Type: application/json" \
   -d '{"format":"png"}' > screenshot.png
 
 # 单击坐标
-curl -X POST http://<设备IP>:8090/api/touch/tap \
+curl -X POST http://<设备IP>:8888/api/touch/tap \
   -H "Content-Type: application/json" \
   -d '{"x":300,"y":500}'
 
 # 滑动
-curl -X POST http://<设备IP>:8090/api/touch/swipe \
+curl -X POST http://<设备IP>:8888/api/touch/swipe \
   -H "Content-Type: application/json" \
   -d '{"fromX":100,"fromY":800,"toX":100,"toY":200,"duration":0.3}'
 
 # 返回主屏幕
-curl -X POST http://<设备IP>:8090/api/hid/home
+curl -X POST http://<设备IP>:8888/api/hid/home
 
 # 启动 App
-curl -X POST http://<设备IP>:8090/api/apps/launch \
+curl -X POST http://<设备IP>:8888/api/apps/launch \
   -H "Content-Type: application/json" \
   -d '{"bundleId":"com.apple.mobilesafari"}'
 
 # 执行 Shell 命令
-curl -X POST http://<设备IP>:8090/api/shell/exec \
+curl -X POST http://<设备IP>:8888/api/shell/exec \
   -H "Content-Type: application/json" \
   -d '{"command":"uptime"}'
 ```
@@ -235,12 +248,12 @@ curl -X POST http://<设备IP>:8090/api/shell/exec \
 
 ```bash
 # 列出所有工具
-curl -X POST http://<设备IP>:8090/mcp \
+curl -X POST http://<设备IP>:8888/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
 # 调用工具 - 截图
-curl -X POST http://<设备IP>:8090/mcp \
+curl -X POST http://<设备IP>:8888/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc":"2.0",
@@ -268,7 +281,7 @@ launchctl unload /var/jb/Library/LaunchDaemons/com.autogo.daemon.plist
 tail -f /var/mobile/Documents/autogo/logs/daemon.log
 
 # 查看状态
-curl http://localhost:8090/health
+curl http://localhost:8888/health
 ```
 
 ---
@@ -288,6 +301,10 @@ autogo-daemon-objc/
 │   └── prerm                       # 卸载前脚本
 ├── Library/LaunchDaemons/
 │   └── com.autogo.daemon.plist     # 守护进程配置 (var/jb 路径)
+├── app/                            # Dashboard App (SpringBoard 可见)
+│   ├── main.m                      # App 入口
+│   ├── AGAppDelegate.h/m           # App 界面 (服务状态/设备信息)
+│   └── Info.plist                  # App 元数据
 └── src/                            # Objective-C 源码
     ├── main.m                      # 入口
     ├── AGJSON.h/m                  # JSON 序列化
@@ -318,8 +335,10 @@ autogo-daemon-objc/
 | 用户数据 | `/var/mobile/Documents/autogo/` (无 /var/jb 前缀) |
 | 最低 iOS | 13.0 → 15.0 |
 | DEB 包名 | `*_iphoneos-arm64.deb` |
+| 默认端口 | 8090 → **8888** |
+| Dashboard App | 无 → **SpringBoard 可见 App + Web 控制台** |
 
 ---
 ## 协议与许可
 
-纯 Objective-C 实现，无第三方依赖。作为 root LaunchDaemon 在 Rootless 越狱设备 (`/var/jb`) 上运行，端口 8090。
+纯 Objective-C 实现，无第三方依赖。作为 root LaunchDaemon 在 Rootless 越狱设备 (`/var/jb`) 上运行，端口 8888。

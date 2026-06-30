@@ -9,7 +9,7 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/var/jb/usr/bin/ios-autogo</string>
-		<string>8090</string>
+		<string>8888</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>

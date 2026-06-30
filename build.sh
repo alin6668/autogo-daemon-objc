@@ -85,7 +85,46 @@ fi
 echo "=== 编译完成: $OUTDIR/$DAEMON ==="
 ls -lh "$OUTDIR/$DAEMON"
 
+# ============================================================
+# 编译 Dashboard App (SpringBoard 可见应用)
+# ============================================================
+echo ""
+echo "=== 编译 Dashboard App ==="
+APP_OBJS=""
+for f in app/*.m; do
+    obj="$OUTDIR/$(basename $f .m)_app.o"
+    echo "编译 $f ..."
+    clang -arch arm64 \
+        -isysroot "$SDK_PATH" \
+        -miphoneos-version-min="$SDK_MIN" \
+        -fobjc-arc \
+        -fmodules \
+        -I"$SDK_PATH/usr/include" \
+        -Iapp \
+        -c "$f" -o "$obj"
+    APP_OBJS="$APP_OBJS $obj"
+done
+
+APP_BIN="$OUTDIR/AutoGo"
+echo "链接 App ..."
+clang -arch arm64 \
+    -isysroot "$SDK_PATH" \
+    -miphoneos-version-min="$SDK_MIN" \
+    -framework UIKit \
+    -framework Foundation \
+    -framework CoreGraphics \
+    $APP_OBJS \
+    -o "$APP_BIN"
+
+if command -v ldid >/dev/null 2>&1; then
+    ldid -S "$APP_BIN"
+fi
+echo "App 编译完成: $APP_BIN"
+ls -lh "$APP_BIN"
+
+# ============================================================
 # 组装 DEB (Rootless 结构)
+# ============================================================
 echo ""
 echo "=== 组装 DEB 包 (Rootless / iphoneos-arm64) ==="
 DEB_ROOT="$OUTDIR/deb_root"
@@ -93,9 +132,16 @@ rm -rf "$DEB_ROOT"
 mkdir -p "$DEB_ROOT/DEBIAN"
 mkdir -p "$DEB_ROOT/var/jb/usr/bin"
 mkdir -p "$DEB_ROOT/var/jb/Library/LaunchDaemons"
+mkdir -p "$DEB_ROOT/var/jb/Applications/AutoGo.app"
 
 cp "$OUTDIR/$DAEMON" "$DEB_ROOT/var/jb/usr/bin/"
 chmod 755 "$DEB_ROOT/var/jb/usr/bin/$DAEMON"
+
+# Dashboard App
+cp "$APP_BIN" "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
+chmod 755 "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
+cp app/Info.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/Info.plist"
+
 cp DEBIAN/control "$DEB_ROOT/DEBIAN/"
 cp DEBIAN/postinst "$DEB_ROOT/DEBIAN/"
 cp DEBIAN/prerm "$DEB_ROOT/DEBIAN/"

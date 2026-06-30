@@ -17,5 +17,16 @@ chown root:wheel "$DAEMON_BIN" 2>/dev/null || true
 mkdir -p "$DATA_DIR"/{screenshots,logs,crash,data}
 chown mobile:mobile "$DATA_DIR" 2>/dev/null || true
 
-echo "AutoGo Daemon (Rootless) 安装完成! http://设备IP:8090"
+# 注册 App 图标到 SpringBoard
+APP_PATH="/var/jb/Applications/AutoGo.app"
+if [ -d "$APP_PATH" ]; then
+    chmod -R 755 "$APP_PATH"
+    chown -R root:wheel "$APP_PATH" 2>/dev/null || true
+fi
+# 刷新 uicache 使 App 图标出现
+/var/jb/usr/bin/uicache -a 2>/dev/null || /usr/bin/uicache -a 2>/dev/null || true
+
+echo "AutoGo Daemon (Rootless) 安装完成!"
+echo "  Web 控制台: http://设备IP:8888"
+echo "  本机访问: http://127.0.0.1:8888"
 exit 0

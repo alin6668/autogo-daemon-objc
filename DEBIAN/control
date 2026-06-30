@@ -7,6 +7,7 @@ Description: iOS 综合设备控制守护进程 (Rootless / 多巴胺)
  支持：触控手势、硬件按键、文字输入、截图、App 管理、
  无障碍操作、剪贴板、文件系统、系统日志、VPN/WiFi 控制、
  设备信息、Shell 命令执行、MCP 协议等 60+ API 端点。
+ 包含 SpringBoard 可见 Dashboard App (端口 8888)。
 Maintainer: AutoGo
 Author: AutoGo
 Section: System

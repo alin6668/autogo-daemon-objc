@@ -38,16 +38,17 @@ int main(int argc, char *argv[]) {
             mkdir([d UTF8String], 0755);
         }
 
-        int port = 8090;
+        int port = 8888;
         if (argc >= 2) {
             port = atoi(argv[1]);
         }
-        if (port <= 0 || port > 65535) port = 8090;
+        if (port <= 0 || port > 65535) port = 8888;
 
         NSLog(@"====================================");
         NSLog(@"AutoGo Daemon v1.0.0 (ObjC 原生)");
         NSLog(@"集成: ios-mcp + go-ios + AutoGo");
         NSLog(@"端口: %d", port);
+        NSLog(@"Web 控制台: http://设备IP:%d", port);
         NSLog(@"健康检查: http://设备IP:%d/health", port);
         NSLog(@"API 文档: http://设备IP:%d/api/docs", port);
         NSLog(@"MCP 端点: http://设备IP:%d/mcp", port);

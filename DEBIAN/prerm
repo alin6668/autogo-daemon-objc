@@ -7,4 +7,10 @@ PLIST="/var/jb/Library/LaunchDaemons/com.autogo.daemon.plist"
 /var/jb/bin/launchctl unload "$PLIST" 2>/dev/null || true
 
 killall ios-autogo 2>/dev/null || true
+
+# 移除 App
+rm -rf /var/jb/Applications/AutoGo.app 2>/dev/null || true
+/var/jb/usr/bin/uicache -a 2>/dev/null || /usr/bin/uicache -a 2>/dev/null || true
+
+echo "AutoGo Daemon 已卸载"
 exit 0
