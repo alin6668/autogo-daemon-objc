@@ -20,7 +20,7 @@ env:
 
 jobs:
   build:
-    name: Build iOS DEB (arm64 rootless)
+    name: Build iOS DEB (arm64+arm64e rootless)
     runs-on: macos-14
 
     steps:
@@ -48,78 +48,104 @@ jobs:
 
           mkdir -p build/obj
 
-          # === 编译守护进程 ===
-          OBJS=""
-          for f in src/*.m; do
-            NAME=$(basename "$f" .m)
-            OBJ="build/obj/${NAME}.o"
-            echo "编译 $f ..."
-            clang -arch arm64 \
+          LINK_FLAGS="-isysroot $SDK_PATH -miphoneos-version-min=15.0 -framework Foundation -framework CoreFoundation -framework UIKit -framework CoreGraphics -framework IOKit -framework Security -ldl"
+          APP_LINK_FLAGS="-isysroot $SDK_PATH -miphoneos-version-min=15.0 -framework UIKit -framework Foundation -framework CoreGraphics"
+          ARCH_LIST="arm64 arm64e"
+          DAEMON_FAT="build/ios-autogo"
+          APP_FAT="build/AutoGo"
+          DAEMON_BINS=""
+          APP_BINS=""
+
+          # === 编译守护进程 (arm64 + arm64e fat binary) ===
+          echo "=== 编译守护进程 (arm64 + arm64e fat) ==="
+          for ARCH in $ARCH_LIST; do
+            echo "--- 架构: $ARCH ---"
+            OBJS=""
+            for f in src/*.m; do
+              NAME=$(basename "$f" .m)
+              OBJ="build/obj/${NAME}_${ARCH}.o"
+              echo "编译 $f ($ARCH)..."
+              clang -arch "$ARCH" \
+                -isysroot "$SDK_PATH" \
+                -miphoneos-version-min=15.0 \
+                -fobjc-arc \
+                -fmodules \
+                -Wno-deprecated-declarations \
+                -c "$f" -o "$OBJ" || { echo "ERROR: 编译 $f 失败"; exit 1; }
+              OBJS="$OBJS $OBJ"
+            done
+
+            BIN="build/ios-autogo_${ARCH}"
+            echo "链接守护进程 ($ARCH)..."
+            clang -arch "$ARCH" \
               -isysroot "$SDK_PATH" \
               -miphoneos-version-min=15.0 \
-              -fobjc-arc \
-              -fmodules \
-              -Wno-deprecated-declarations \
-              -c "$f" -o "$OBJ" || {
-                echo "ERROR: 编译 $f 失败"
-                exit 1
-              }
-            OBJS="$OBJS $OBJ"
+              -framework Foundation \
+              -framework CoreFoundation \
+              -framework UIKit \
+              -framework CoreGraphics \
+              -framework IOKit \
+              -framework Security \
+              -ldl \
+              $OBJS \
+              -o "$BIN"
+            DAEMON_BINS="$DAEMON_BINS $BIN"
           done
 
-          echo "链接守护进程 ..."
-          clang -arch arm64 \
-            -isysroot "$SDK_PATH" \
-            -miphoneos-version-min=15.0 \
-            -framework Foundation \
-            -framework CoreFoundation \
-            -framework UIKit \
-            -framework CoreGraphics \
-            -framework IOKit \
-            -framework Security \
-            -ldl \
-            $OBJS \
-            -o build/ios-autogo
+          # 合并守护进程 fat binary
+          lipo -create $DAEMON_BINS -output "$DAEMON_FAT"
+          chmod 755 "$DAEMON_FAT"
+          ldid -S "$DAEMON_FAT" 2>/dev/null || echo "守护进程签名跳过"
+          ls -lh "$DAEMON_FAT"
+          file "$DAEMON_FAT"
 
-          # 签名
-          ldid -S build/ios-autogo 2>/dev/null || echo "签名跳过"
-          ls -lh build/ios-autogo
-          file build/ios-autogo
+          # === 编译 Dashboard App (arm64 + arm64e fat binary, 带 entitlement 签名) ===
+          echo "=== 编译 Dashboard App (arm64 + arm64e fat) ==="
+          for ARCH in $ARCH_LIST; do
+            echo "--- 架构: $ARCH ---"
+            APP_OBJS=""
+            for f in app/*.m; do
+              NAME=$(basename "$f" .m)
+              OBJ="build/obj/${NAME}_${ARCH}_app.o"
+              echo "编译 $f ($ARCH)..."
+              clang -arch "$ARCH" \
+                -isysroot "$SDK_PATH" \
+                -miphoneos-version-min=15.0 \
+                -fobjc-arc \
+                -fmodules \
+                -Wno-deprecated-declarations \
+                -Iapp \
+                -c "$f" -o "$OBJ" || { echo "ERROR: 编译 $f 失败"; exit 1; }
+              APP_OBJS="$APP_OBJS $OBJ"
+            done
 
-          # === 编译 Dashboard App ===
-          echo "编译 Dashboard App ..."
-          APP_OBJS=""
-          for f in app/*.m; do
-            NAME=$(basename "$f" .m)
-            OBJ="build/obj/${NAME}_app.o"
-            echo "编译 $f ..."
-            clang -arch arm64 \
+            BIN="build/AutoGo_${ARCH}"
+            echo "链接 Dashboard App ($ARCH)..."
+            clang -arch "$ARCH" \
               -isysroot "$SDK_PATH" \
               -miphoneos-version-min=15.0 \
-              -fobjc-arc \
-              -fmodules \
-              -Wno-deprecated-declarations \
-              -Iapp \
-              -c "$f" -o "$OBJ" || {
-                echo "ERROR: 编译 $f 失败"
-                exit 1
-              }
-            APP_OBJS="$APP_OBJS $OBJ"
+              -framework UIKit \
+              -framework Foundation \
+              -framework CoreGraphics \
+              $APP_OBJS \
+              -o "$BIN"
+            APP_BINS="$APP_BINS $BIN"
           done
 
-          echo "链接 Dashboard App ..."
-          clang -arch arm64 \
-            -isysroot "$SDK_PATH" \
-            -miphoneos-version-min=15.0 \
-            -framework UIKit \
-            -framework Foundation \
-            -framework CoreGraphics \
-            $APP_OBJS \
-            -o build/AutoGo
+          # 合并 App fat binary
+          lipo -create $APP_BINS -output "$APP_FAT"
+          chmod 755 "$APP_FAT"
 
-          ldid -S build/AutoGo 2>/dev/null || echo "App 签名跳过"
-          ls -lh build/AutoGo
-          file build/AutoGo
+          # 使用 entitlement 签名 (解决闪退问题)
+          echo "签名 Dashboard App (entitlements)..."
+          if [ -f app/entitlements.plist ]; then
+            ldid -Sapp/entitlements.plist "$APP_FAT"
+            echo "App 已使用 entitlements.plist 签名"
+          else
+            ldid -S "$APP_FAT" 2>/dev/null || echo "App 签名跳过"
+          fi
+          ls -lh "$APP_FAT"
+          file "$APP_FAT"
 
       - name: Build DEB package
         run: |
@@ -134,10 +160,11 @@ jobs:
           cp build/ios-autogo "$DEB_ROOT/var/jb/usr/bin/"
           chmod 755 "$DEB_ROOT/var/jb/usr/bin/ios-autogo"
 
-          # Dashboard App
+          # Dashboard App (fat binary + signed with entitlements)
           cp build/AutoGo "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
           chmod 755 "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
           cp app/Info.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/Info.plist"
+          cp app/entitlements.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/entitlements.plist"
 
           cp DEBIAN/control "$DEB_ROOT/DEBIAN/"
           cp DEBIAN/postinst "$DEB_ROOT/DEBIAN/"
@@ -146,7 +173,7 @@ jobs:
           cp Library/LaunchDaemons/com.autogo.daemon.plist "$DEB_ROOT/var/jb/Library/LaunchDaemons/"
 
           # 使用 dpkg-deb 打包
-          DEB_OUT="build/${DEB_NAME}_${VERSION}_iphoneos-arm64.deb"
+          DEB_OUT="build/${DEB_NAME}_${VERSION}_iphoneos-arm64e.deb"
           if command -v dpkg-deb >/dev/null 2>&1; then
             dpkg-deb -b "$DEB_ROOT" "$DEB_OUT"
             echo "DEB (dpkg-deb): $DEB_OUT"

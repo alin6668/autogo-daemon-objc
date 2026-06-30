@@ -57,7 +57,7 @@ internal-package::
 	cp -r Library $(THEOS_STAGING_DIR)/
 	chmod 755 $(THEOS_STAGING_DIR)/DEBIAN/postinst
 	chmod 755 $(THEOS_STAGING_DIR)/DEBIAN/prerm
-	@echo "  DEB 包准备就绪 (iphoneos-arm64)"
+	@echo "  DEB 包准备就绪 (iphoneos-arm64e)"
 
 # 直接打包
 package::

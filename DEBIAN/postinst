@@ -17,12 +17,37 @@ chown root:wheel "$DAEMON_BIN" 2>/dev/null || true
 mkdir -p "$DATA_DIR"/{screenshots,logs,crash,data}
 chown mobile:mobile "$DATA_DIR" 2>/dev/null || true
 
-# 注册 App 图标到 SpringBoard
+# 注册 App 图标到 SpringBoard (带 entitlement 签名以防闪退)
 APP_PATH="/var/jb/Applications/AutoGo.app"
 if [ -d "$APP_PATH" ]; then
     chmod -R 755 "$APP_PATH"
     chown -R root:wheel "$APP_PATH" 2>/dev/null || true
+
+    # 重新签名 App (确保 entitlement 生效)
+    APP_BIN="$APP_PATH/AutoGo"
+    ENT_FILE="$APP_PATH/entitlements.plist"
+    if [ -x "$APP_BIN" ]; then
+        if [ -f /var/jb/usr/bin/ldid ]; then
+            if [ -f "$ENT_FILE" ]; then
+                /var/jb/usr/bin/ldid -S"$ENT_FILE" "$APP_BIN"
+                echo "App 已使用 entitlements 签名"
+            else
+                /var/jb/usr/bin/ldid -S "$APP_BIN"
+                echo "App 已签名 (无 entitlements)"
+            fi
+        elif command -v ldid >/dev/null 2>&1; then
+            if [ -f "$ENT_FILE" ]; then
+                ldid -S"$ENT_FILE" "$APP_BIN"
+            else
+                ldid -S "$APP_BIN"
+            fi
+            echo "App 已使用 ldid 签名"
+        else
+            echo "警告: ldid 未找到, App 可能无法启动"
+        fi
+    fi
 fi
+
 # 刷新 uicache 使 App 图标出现
 /var/jb/usr/bin/uicache -a 2>/dev/null || /usr/bin/uicache -a 2>/dev/null || true
 

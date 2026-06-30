@@ -86,47 +86,65 @@ echo "=== 编译完成: $OUTDIR/$DAEMON ==="
 ls -lh "$OUTDIR/$DAEMON"
 
 # ============================================================
-# 编译 Dashboard App (SpringBoard 可见应用)
+# 编译 Dashboard App (SpringBoard 可见应用, arm64+arm64e fat)
 # ============================================================
 echo ""
-echo "=== 编译 Dashboard App ==="
-APP_OBJS=""
-for f in app/*.m; do
-    obj="$OUTDIR/$(basename $f .m)_app.o"
-    echo "编译 $f ..."
-    clang -arch arm64 \
+echo "=== 编译 Dashboard App (arm64+arm64e fat) ==="
+APP_FAT_BIN="$OUTDIR/AutoGo"
+APP_BINS=""
+for ARCH in $ARCHS; do
+    echo "  架构: $ARCH"
+    APP_OBJS=""
+    for f in app/*.m; do
+        obj="$OUTDIR/$(basename $f .m)_${ARCH}_app.o"
+        echo "编译 $f ($ARCH)..."
+        clang -arch "$ARCH" \
+            -isysroot "$SDK_PATH" \
+            -miphoneos-version-min="$SDK_MIN" \
+            -fobjc-arc \
+            -fmodules \
+            -I"$SDK_PATH/usr/include" \
+            -Iapp \
+            -c "$f" -o "$obj"
+        APP_OBJS="$APP_OBJS $obj"
+    done
+
+    APP_BIN="$OUTDIR/AutoGo_${ARCH}"
+    echo "链接 App ($ARCH)..."
+    clang -arch "$ARCH" \
         -isysroot "$SDK_PATH" \
         -miphoneos-version-min="$SDK_MIN" \
-        -fobjc-arc \
-        -fmodules \
-        -I"$SDK_PATH/usr/include" \
-        -Iapp \
-        -c "$f" -o "$obj"
-    APP_OBJS="$APP_OBJS $obj"
+        -framework UIKit \
+        -framework Foundation \
+        -framework CoreGraphics \
+        $APP_OBJS \
+        -o "$APP_BIN"
+    APP_BINS="$APP_BINS $APP_BIN"
 done
 
-APP_BIN="$OUTDIR/AutoGo"
-echo "链接 App ..."
-clang -arch arm64 \
-    -isysroot "$SDK_PATH" \
-    -miphoneos-version-min="$SDK_MIN" \
-    -framework UIKit \
-    -framework Foundation \
-    -framework CoreGraphics \
-    $APP_OBJS \
-    -o "$APP_BIN"
-
-if command -v ldid >/dev/null 2>&1; then
-    ldid -S "$APP_BIN"
+# 合并为 fat binary
+if [ "$(echo "$APP_BINS" | wc -w)" -ge 2 ]; then
+    lipo -create $APP_BINS -output "$APP_FAT_BIN"
+else
+    cp $APP_BINS "$APP_FAT_BIN"
 fi
-echo "App 编译完成: $APP_BIN"
-ls -lh "$APP_BIN"
+chmod 755 "$APP_FAT_BIN"
+
+# 使用 entitlement 签名 (解决闪退问题)
+if [ -f app/entitlements.plist ]; then
+    ldid -Sapp/entitlements.plist "$APP_FAT_BIN"
+    echo "App 已使用 entitlements.plist 签名"
+else
+    ldid -S "$APP_FAT_BIN" 2>/dev/null || echo "App 签名跳过"
+fi
+echo "App 编译完成: $APP_FAT_BIN"
+ls -lh "$APP_FAT_BIN"
 
 # ============================================================
 # 组装 DEB (Rootless 结构)
 # ============================================================
 echo ""
-echo "=== 组装 DEB 包 (Rootless / iphoneos-arm64) ==="
+echo "=== 组装 DEB 包 (Rootless / iphoneos-arm64e) ==="
 DEB_ROOT="$OUTDIR/deb_root"
 rm -rf "$DEB_ROOT"
 mkdir -p "$DEB_ROOT/DEBIAN"
@@ -137,10 +155,11 @@ mkdir -p "$DEB_ROOT/var/jb/Applications/AutoGo.app"
 cp "$OUTDIR/$DAEMON" "$DEB_ROOT/var/jb/usr/bin/"
 chmod 755 "$DEB_ROOT/var/jb/usr/bin/$DAEMON"
 
-# Dashboard App
-cp "$APP_BIN" "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
+# Dashboard App (fat binary + signed with entitlements)
+cp "$APP_FAT_BIN" "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
 chmod 755 "$DEB_ROOT/var/jb/Applications/AutoGo.app/AutoGo"
 cp app/Info.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/Info.plist"
+cp app/entitlements.plist "$DEB_ROOT/var/jb/Applications/AutoGo.app/entitlements.plist"
 
 cp DEBIAN/control "$DEB_ROOT/DEBIAN/"
 cp DEBIAN/postinst "$DEB_ROOT/DEBIAN/"
@@ -148,7 +167,7 @@ cp DEBIAN/prerm "$DEB_ROOT/DEBIAN/"
 chmod 755 "$DEB_ROOT/DEBIAN/postinst" "$DEB_ROOT/DEBIAN/prerm"
 cp Library/LaunchDaemons/com.autogo.daemon.plist "$DEB_ROOT/var/jb/Library/LaunchDaemons/"
 
-DEB_NAME="com.autogo.daemon_1.0.0_iphoneos-arm64.deb"
+DEB_NAME="com.autogo.daemon_1.0.0_iphoneos-arm64e.deb"
 if command -v dpkg-deb >/dev/null 2>&1; then
     dpkg-deb -b "$DEB_ROOT" "$OUTDIR/$DEB_NAME"
 elif command -v dpkg >/dev/null 2>&1; then
