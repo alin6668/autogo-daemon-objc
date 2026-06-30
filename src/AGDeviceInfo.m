@@ -22,6 +22,10 @@ static int ag_run_cmd(const char *cmd) {
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
+@interface UIScreen (Private)
+- (void)setUserInterfaceStyle:(NSInteger)style;
+@end
+
 @implementation AGDeviceInfo
 
 #pragma mark - 设备标识
@@ -201,8 +205,9 @@ static int ag_run_cmd(const char *cmd) {
 }
 
 + (NSString *)timeFormat {
-    NSString *format = [[NSDateFormatter dateFormatFromTemplate:@"j"
-        options:0 locale:[NSLocale currentLocale]];
+    NSLocale *loc = [NSLocale currentLocale];
+    NSString *format = [NSDateFormatter dateFormatFromTemplate:@"j"
+        options:0 locale:loc];
     return [format containsString:@"a"] ? @"12h" : @"24h";
 }
 
