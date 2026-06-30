@@ -11,6 +11,7 @@
 	<key>com.apple.security.exception.files.absolute-path.read-only</key>
 	<array>
 		<string>/var/jb/</string>
+		<string>/private/var/containers/Bundle/Application/</string>
 		<string>/usr/lib/</string>
 		<string>/System/Library/</string>
 	</array>

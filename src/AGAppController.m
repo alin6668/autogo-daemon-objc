@@ -1,6 +1,7 @@
 //  AGAppController.m - App 管理实现
 
 #import "AGAppController.h"
+#import "AGJailbreak.h"
 #import <UIKit/UIKit.h>
 #import <spawn.h>
 #import <sys/wait.h>
@@ -20,7 +21,7 @@ static int ag_run_cmd(const char *cmd) {
 
 + (NSArray *)listApps {
     NSMutableArray *apps = [NSMutableArray array];
-    NSArray *dirs = @[@"/Applications", @"/var/jb/Applications"];
+    NSArray *dirs = @[@"/Applications", ag_jbpath(@"Applications")];
 
     for (NSString *dir in dirs) {
         NSArray *entries = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil];

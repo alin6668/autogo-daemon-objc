@@ -1,6 +1,7 @@
 //  AGAccessibilityController.m - 辅助触控 & 无障碍实现
 
 #import "AGAccessibilityController.h"
+#import "AGJailbreak.h"
 #import <notify.h>
 
 @implementation AGAccessibilityController
@@ -39,7 +40,7 @@
 + (void)writeATPLists:(BOOL)on {
     NSArray *paths = @[
         @"/var/mobile/Library/Preferences/com.apple.Accessibility.plist",
-        @"/var/jb/var/mobile/Library/Preferences/com.apple.Accessibility.plist"
+        ag_jbpath(@"var/mobile/Library/Preferences/com.apple.Accessibility.plist")
     ];
 
     for (NSString *path in paths) {

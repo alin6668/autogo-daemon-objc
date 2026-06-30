@@ -1,16 +1,34 @@
 #!/bin/bash
-# Rootless (Dopamine) 卸载脚本
+# Rootless (Dopamine hideroot) 卸载脚本 — 动态检测 jbroot
 set -e
 
-PLIST="/var/jb/Library/LaunchDaemons/com.autogo.daemon.plist"
+# === 动态检测越狱根路径 ===
+detect_jbroot() {
+    if [ -n "$JBROOT" ] && [ -d "$JBROOT" ]; then echo "$JBROOT"; return; fi
+    if [ -L /var/jb ]; then
+        local target; target=$(readlink /var/jb 2>/dev/null)
+        if [ -n "$target" ] && [ -d "$target" ]; then echo "$target"; return; fi
+    fi
+    if [ -d /var/jb ]; then echo "/var/jb"; return; fi
+    local d
+    for d in /private/var/containers/Bundle/Application/.jbroot-*; do
+        if [ -d "$d" ]; then echo "$d"; return; fi
+    done
+    echo "/var/jb"
+}
+
+JBROOT=$(detect_jbroot)
+echo "[prerm] 检测到 jbroot: $JBROOT"
+
+PLIST="$JBROOT/Library/LaunchDaemons/com.autogo.daemon.plist"
 /bin/launchctl unload "$PLIST" 2>/dev/null || \
-/var/jb/bin/launchctl unload "$PLIST" 2>/dev/null || true
+"$JBROOT/bin/launchctl" unload "$PLIST" 2>/dev/null || true
 
 killall ios-autogo 2>/dev/null || true
 
 # 移除 App
-rm -rf /var/jb/Applications/AutoGo.app 2>/dev/null || true
-/var/jb/usr/bin/uicache -a 2>/dev/null || /usr/bin/uicache -a 2>/dev/null || true
+rm -rf "$JBROOT/Applications/AutoGo.app" 2>/dev/null || true
+"$JBROOT/usr/bin/uicache" -a 2>/dev/null || /usr/bin/uicache -a 2>/dev/null || true
 
 echo "AutoGo Daemon 已卸载"
 exit 0
