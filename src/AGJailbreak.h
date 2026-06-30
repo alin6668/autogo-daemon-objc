@@ -14,5 +14,3 @@ NSString *ag_jbroot(void);
 
 /// 拼接越狱路径: ag_jbpath(@"Applications") → /var/jb/Applications
 NSString *ag_jbpath(NSString *subpath);
-
-@end
